@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkinCheck AI – Educational Skin Lesion Screener</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="app-page">
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <h1 class="app-title">SkinCheck AI</h1>
+        <p class="app-subtitle">
+          Upload a dermoscopic image of a skin lesion and get an
+          <strong>educational risk assessment</strong> from an AI model
+          trained on HAM10000 and ISIC datasets.
+          This tool is <strong>not</strong> a medical diagnosis.
+        </p>
+      </div>
+      <div class="badge-group">
+        <span class="badge">Prototype</span>
+        <span class="badge badge-secondary">Research / Education Only</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Left: Upload & preview -->
+      <section class="panel panel-upload">
+        <h2>1. Upload lesion image</h2>
+        <p class="panel-help">
+          For best results, use a clear, close-up dermoscopic image
+          with good lighting and a single lesion in view.
+        </p>
+
+        <div id="dropZone" class="drop-zone">
+          <input
+            id="imageInput"
+            type="file"
+            accept="image/*"
+            class="drop-input"
+          />
+          <div class="drop-content">
+            <p class="drop-title">Drag &amp; drop an image here</p>
+            <p class="drop-subtitle">or click to browse</p>
+          </div>
+        </div>
+
+        <div id="previewWrapper" class="preview-wrapper hidden">
+          <p class="preview-label">Selected image</p>
+          <img id="imagePreview" alt="Skin lesion preview" />
+        </div>
+
+        <button id="analyzeBtn" class="primary-btn" disabled>
+          Analyze Image
+        </button>
+
+        <p class="disclaimer-small">
+          By using this prototype you agree that it is for educational and
+          research purposes only and must not be used to make medical
+          decisions. Always consult a dermatologist for concerns.
+        </p>
+      </section>
+
+      <!-- Right: Results -->
+      <section class="panel panel-result">
+        <h2>2. AI risk assessment</h2>
+
+        <div id="resultEmpty" class="result-empty">
+          <p>No analysis yet.</p>
+          <p class="result-hint">
+            Upload an image and click <strong>Analyze Image</strong>
+            to view the model's assessment.
+          </p>
+        </div>
+
+        <div id="resultCard" class="result-card hidden">
+          <div class="result-header">
+            <span id="riskTag" class="risk-tag">Pending</span>
+            <span id="confidenceTag" class="confidence-tag">–</span>
+          </div>
+
+          <p id="resultSummary" class="result-summary"></p>
+
+          <div class="meter-block">
+            <div class="meter-label-row">
+              <span>Low concern</span>
+              <span>High concern</span>
+            </div>
+            <div class="meter-bar">
+              <div id="riskMeterFill" class="meter-fill"></div>
+            </div>
+          </div>
+
+          <div class="explanation-block">
+            <h3>Model explanation</h3>
+            <p id="resultExplanation" class="result-explanation"></p>
+          </div>
+
+          <div class="callout">
+            <strong>Important:</strong>
+            This tool can be wrong. If the model flags “needs review”
+            or you feel worried about a lesion, schedule an appointment
+            with a qualified clinician.
+          </div>
+        </div>
+
+        <div id="loadingBlock" class="loading-block hidden">
+          <div class="spinner"></div>
+          <p>Analyzing image with the skin lesion model…</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>
+        Research prototype – based on transfer learning CNNs trained on
+        HAM10000 and ISIC skin lesion datasets. Do not use for clinical
+        decision-making.
+      </p>
+    </footer>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
