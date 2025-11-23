@@ -75,73 +75,96 @@ document.addEventListener("DOMContentLoaded", () => {
     handleFiles(e.dataTransfer.files);
   });
 
-  /* ---------- analysis ---------- */
+/* ---------- analysis ---------- */
 
-  analyzeBtn.addEventListener("click", async () => {
-    if (!currentImageBase64) return;
-    setLoading(true);
-    resultEmpty.classList.add("hidden");
-    resultCard.classList.add("hidden");
+analyzeBtn.addEventListener("click", async () => {
+  if (!currentImageBase64) return;
+  setLoading(true);
+  resultEmpty.classList.add("hidden");
+  resultCard.classList.add("hidden");
 
-    try {
-      const resp = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image_base64: currentImageBase64
-        })
-      });
+  try {
+    const resp = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_base64: currentImageBase64
+      })
+    });
 
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || "Analysis failed");
-      }
-
-      // Expected response shape (example):
-      // {
-      //   label: "benign" | "malignant",
-      //   risk_score: 0.2..0.95,   // probability of malignancy [0,1]
-      //   confidence: 0.0..1.0,
-      //   summary: "...",
-      //   explanation: "..."
-      // }
-
-      const label = (data.label || "unknown").toLowerCase();
-      const riskScore = Math.min(Math.max(data.risk_score ?? 0.5, 0), 1);
-      const conf = Math.min(Math.max(data.confidence ?? 0.5, 0), 1);
-
-      // Risk tag styling
-      if (label === "malignant" || riskScore >= 0.6) {
-        riskTag.textContent = "Needs review";
-        riskTag.className = "risk-tag risk-high";
-      } else if (riskScore <= 0.3) {
-        riskTag.textContent = "Likely benign";
-        riskTag.className = "risk-tag risk-low";
-      } else {
-        riskTag.textContent = "Uncertain";
-        riskTag.className = "risk-tag risk-medium";
-      }
-
-      confidenceTag.textContent = `Confidence: ${(conf * 100).toFixed(1)}%`;
-      resultSummary.textContent =
-        data.summary ||
-        "The model estimated the probability that this lesion may require further clinical review.";
-
-      resultExplanation.textContent =
-        data.explanation ||
-        "The model considered factors such as asymmetry, border irregularity, color variation and overall pattern to estimate risk.";
-
-      riskMeterFill.style.width = `${Math.round(riskScore * 100)}%`;
-
-      resultCard.classList.remove("hidden");
-    } catch (err) {
-      console.error(err);
-      alert(
-        "There was an error analyzing the image. Please try again, or check the server logs."
-      );
-      resultEmpty.classList.remove("hidden");
-    } finally {
-      setLoading(false);
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.error || "Analysis failed");
     }
-  });
+
+    // 🔍 DEBUG LOG
+    console.log("API response:", data);
+
+    // --- NEW FORMAT EXPECTED ---
+    // {
+    //   ensemble: { label, risk_score, confidence, summary, explanation },
+    //   resnet: {...},
+    //   vit: {...}
+    // }
+
+    // Use ensemble if it exists, else fallback to flat format
+    const ens = data.ensemble || data;
+    const resnet = data.resnet || null;
+    const vit = data.vit || null;
+
+    // Prevent the 50% fallback: enforce valid risk score
+    if (ens.risk_score === undefined || isNaN(ens.risk_score)) {
+      console.error("❌ No valid ensemble.risk_score returned:", ens);
+      alert("The AI did not return a valid risk score. Check the Python server.");
+      setLoading(false);
+      return;
+    }
+
+    const label = (ens.label || "unknown").toLowerCase();
+    const riskScore = Math.min(Math.max(ens.risk_score, 0), 1);
+    const conf = Math.min(Math.max(ens.confidence ?? 0.5, 0), 1);
+
+    // ───────── RISK TAG ─────────
+    if (label === "malignant" || riskScore >= 0.6) {
+      riskTag.textContent = "Needs review";
+      riskTag.className = "risk-tag risk-high";
+    } else if (riskScore <= 0.3) {
+      riskTag.textContent = "Likely benign";
+      riskTag.className = "risk-tag risk-low";
+    } else {
+      riskTag.textContent = "Uncertain";
+      riskTag.className = "risk-tag risk-medium";
+    }
+
+    confidenceTag.textContent = `Confidence: ${(conf * 100).toFixed(1)}%`;
+
+    // ───────── SUMMARY & EXPLANATION ─────────
+    resultSummary.textContent =
+      ens.summary ||
+      "The ensemble of AI models estimated the malignancy risk for this lesion.";
+
+    // Add ResNet vs ViT comparison sentence if available
+    let comparisonLine = "";
+    if (resnet && vit) {
+      const r = (resnet.risk_score * 100).toFixed(0);
+      const v = (vit.risk_score * 100).toFixed(0);
+      comparisonLine = ` ResNet50 estimated ${r}% risk, while the Vision Transformer estimated ${v}% risk.`;
+    }
+
+    resultExplanation.textContent =
+      (ens.explanation || "") + comparisonLine;
+
+    // ───────── METER FILL ─────────
+    riskMeterFill.style.width = `${Math.round(riskScore * 100)}%`;
+
+    resultCard.classList.remove("hidden");
+  } catch (err) {
+    console.error("❌ Analysis error:", err);
+    alert("There was an error analyzing the image. Please try again.");
+    resultEmpty.classList.remove("hidden");
+  } finally {
+    setLoading(false);
+  }
+});
+
 });
