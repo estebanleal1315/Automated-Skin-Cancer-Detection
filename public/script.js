@@ -55,8 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- drag & drop ---------- */
 
-  dropZone.addEventListener("click", () => imageInput.click());
-
   imageInput.addEventListener("change", (e) => {
     handleFiles(e.target.files);
   });

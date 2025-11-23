@@ -10,28 +10,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 =============================== */
 app.post('/api/analyze', async (req, res) => {
   try {
-    const { image_base64 } = req.body;
-
+    const { image_base64 } = req.body || {};
     if (!image_base64) {
-      return res.status(400).json({ error: "Missing image_base64" });
+      return res.status(400).json({ error: 'Missing image_base64' });
     }
 
-    // TODO: Replace this with your real ML model pipeline
-    const fakeRisk = Math.random();
-    const label = fakeRisk > 0.5 ? "malignant" : "benign";
-
-    return res.json({
-      label,
-      risk_score: fakeRisk,
-      confidence: 0.85,
-      summary: label === "malignant"
-        ? "The model found irregular features that may require clinical review."
-        : "The lesion shows mostly regular benign-like features.",
-      explanation: "This is placeholder logic. Once your CNN is trained, replace this with real model outputs."
+    // Forward the request to the Python inference server
+    const pyResp = await fetch('http://127.0.0.1:8000/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64 }),
     });
-  } catch (error) {
-    console.error("Analysis error:", error);
-    res.status(500).json({ error: "Internal server error" });
+
+    const data = await pyResp.json();
+
+    if (!pyResp.ok) {
+      console.error('Python error:', data);
+      return res.status(500).json({ error: 'Model server error' });
+    }
+
+    // Just pass through what Python sent
+    return res.json(data);
+  } catch (err) {
+    console.error('Node /api/analyze error:', err);
+    res.status(500).json({ error: 'Internal error during analysis' });
   }
 });
 
